@@ -1,0 +1,4 @@
+build
+.cache
+.local
+container.tar.gz
