@@ -1,0 +1,11 @@
+## build container
+
+1) `make run/docker/shell`
+2) `make nix/build/container`
+3) `cp -L ./build/container.tar.gz ./`
+4) `ls -lah container.tar.gz`
+
+    -r--r--r-- 1 root root 286M Aug 25 18:00 container.tar.gz
+
+5) Ctrl-D & `docker load -i container.tar.gz`
+6) `docker run -it gitlab.example.com:5050/nix/showcase/showcase:latest`
