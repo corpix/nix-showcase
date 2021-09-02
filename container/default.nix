@@ -1,6 +1,6 @@
-{ pkgs        ? import <nixpkgs> {}
-, tag         ? version
-, tools       ? pkgs.callPackage ./tools.nix   { inherit pkgs; }
+{ pkgs  ? import <nixpkgs> {}
+, tag   ? version
+, tools ? pkgs.callPackage <tools.nix> { inherit pkgs; }
 , name
 , namespace
 , version
@@ -10,11 +10,8 @@ with pkgs;
 with lib;
 let
   contents = [
-    cacert coreutils busybox
+    cacert coreutils
     curl iproute bashInteractive
-    python38
-    handbrake
-    ffmpeg-full
   ]
   ++ tools.mkNss { }
   ++ tools.mkHosts { }

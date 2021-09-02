@@ -1,0 +1,596 @@
+* nix showcase
+
+  Repository with examples around Nix package manager and NixOS.
+
+  I use it to present this wonderful piece of technology to other people.
+
+** preparations
+
+   For all commands inside this repository you will need a Nix package manager or
+   NixOS in some cases (this requirement will be mentioned explicitly).
+
+   I recommend to use Nix package manager inside docker container:
+
+   #+begin_example
+   $ make run/docker/shell
+   #+end_example
+
+   Also I should mention there is an [[https://nixos.org/guides/install-nix.html][official guide]] which will help you to install Nix package manager to you system.
+   But if you don't use Linux and you don't feel yourself fluent with Nix then i recommend you to use dockerized environment
+   from this repository.
+
+** language
+
+   Useful links:
+
+   - https://nixos.org/manual/nix/stable/#ch-expression-language
+   - https://nixos.wiki/wiki/Nix_Expression_Language
+
+*** repl
+
+    #+begin_example
+    $ nix repl
+    Welcome to Nix version 2.3.15. Type :? for help.
+
+    nix-repl> :?
+    The following commands are available:
+
+     <expr>        Evaluate and print expression
+     <x> = <expr>  Bind expression to variable
+     :a <expr>     Add attributes from resulting set to scope
+     :b <expr>     Build derivation
+     :i <expr>     Build derivation, then install result into current profile
+     :l <path>     Load Nix expression and add it to scope
+     :p <expr>     Evaluate and print expression recursively
+     :q            Exit nix-repl
+     :r            Reload all files
+     :s <expr>     Build dependencies of derivation, then start nix-shell
+     :t <expr>     Describe result of evaluation
+     :u <expr>     Build derivation, then start nix-shell
+    #+end_example
+
+*** what available
+
+    - variables
+    - functions
+    - booleans
+    - numbers
+      - integers
+      - floats
+    - strings
+    - null
+    - paths
+    - uri
+    - attribute sets
+    - lists
+    - control flow
+    - errors
+    - laziness
+
+**** variables
+
+     Lexical scoping:
+
+     #+begin_example nix
+     nix-repl> let a = "hello"; b = "world"; in a + b
+     "helloworld"
+     #+end_example
+
+     All variables in =let= are declarative, so order is not enforced:
+
+     #+begin_example nix
+     nix-repl> let a = b; b = "thing"; in a + b
+     "thingthing"
+
+     nix-repl> x = 1
+     nix-repl> let y = x; x = 2; in y
+     2
+     #+end_example
+
+**** functions
+
+     #+begin_example nix
+     let
+       add = a: b: a + b;
+     in add 1 2
+     #+end_example
+
+     This will output =3=.
+
+     Function like =a: b: ...= has two positional arguments, but:
+
+     - you could define one or more positional arguments, like =a: b: c: d: ...=
+     - you could partially apply function, like =((add 1) 2)= is the same as =add 1 2=
+
+     So, each function could be partially applied:
+
+     #+begin_example nix
+     nix-repl> fn = a: b: c: a + b + c
+
+     nix-repl> fn 1
+     «lambda @ (string):1:5»
+
+     nix-repl> fn 1 2
+     «lambda @ (string):1:8»
+
+     nix-repl> fn 1 2 3
+     6
+     #+end_example
+
+     In addition basic destructuring is supported:
+
+     #+begin_example nix
+     nix-repl> fn = { a, b, c }: a + b + c
+
+     nix-repl> fn { a = 1; b = 2; c = 3; }
+     6
+     #+end_example
+
+     While using destructuring a default values could be specified:
+
+     #+begin_example nix
+     nix-repl> fn = { a, b ? 2, c ? 3 }: a + b + c
+
+     nix-repl> fn { a = 1; }
+     6
+
+     nix-repl> fn { a = 1; b = 1; }
+     5
+     #+end_example
+
+**** booleans
+
+     For boolean true/false there are separate keywords:
+
+     - =true=
+     - =false=
+
+***** boolean operators
+
+     - =!= is boolean =not=, =!true= is =false=
+     - =&&= is boolean =and=, =true && false= is =false=
+     - =||= is boolean =or=, =false || true= is =true=
+     - =->= is boolean =impl=, =true -> true= is =true=, equivalent of =!true || true=
+
+     All this expressions must evaluate to boolean, thus =true && 1= is not valid.
+
+***** equality
+
+      - ==== equal, =1==1= is =true=, =1==2= is =false=
+      - =!== not equal, =2!=2= is =true=
+
+      You could check for equality between values of different type:
+
+      - there is *no error*
+      - but there is *no implicit type conversion*
+      - so different types are always *not equal*
+
+      Here is an examples for types we have not talked about, but they are worth metioning:
+
+      #+begin_example
+      nix-repl> {} == {}
+      true
+
+      nix-repl> { a = 1; } == { a = 1; }
+      true
+
+      nix-repl> { a = { b = 1; }; } == { a = { b = 1; }; }
+      true
+
+      nix-repl> [ 1 2 3 ] == [ 1 2 3 ]
+      true
+
+      nix-repl> [ 1 2 3 ] == [ 1 2 ]
+      false
+      #+end_example
+
+**** numbers
+
+     There are numeric operators:
+
+     #+begin_quote
+     All are left associative
+     #+end_quote
+
+     - =+= addition, =2 + 2= is =4=
+     - =-= subtraction, =4 - 2= is =2=
+     - =*= multiplication, =3 * 3= is =9=
+     - =/= division, =9 / 3= is =3=
+
+     #+begin_quote
+     There is a caveat with division operator, you should always add space in between.
+     Otherwise it will be interpreted as a different type - =path=, we will talk about this bellow
+     #+end_quote
+
+     You could mix integers with floats, this is valid. But in this case result is always float.
+
+     In case you need an integer division use =builtins.div=, for example:
+
+     #+begin_quote
+     [[https://nixos.org/manual/nix/stable/#ssec-builtins][More about builtins]]
+     #+end_quote
+
+     #+begin_example nix
+     nix-repl> builtins.div 4 2
+     2
+
+     nix-repl> builtins.div 7 4
+     1
+     #+end_example
+
+     You could find functional analogs for other operators under =builtins=.
+
+**** strings
+
+     Strings support interpolation.
+
+     #+begin_example nix
+     nix-repl> "hello"
+     "hello"
+
+     nix-repl> who = "world"
+
+     nix-repl> "hello ${who}"
+     "hello world"
+     #+end_example
+
+     Where is no implicit type conversion, so every expression under interpolation should be string:
+
+     #+begin_example nix
+     nix-repl> who = 1
+
+     nix-repl> "hello ${who}"
+     error: cannot coerce an integer to a string, at (string):1:2
+
+     nix-repl> "hello ${builtins.toString who}"
+     "hello 1"
+     #+end_example
+
+     Strings could be multiline:
+
+     #+begin_example nix
+     ''
+     hello
+     world
+     ''
+     #+end_example
+
+**** null
+
+     Null is just =null=, like in other languages.
+
+     #+begin_example nix
+     nix-repl> fn = { var ? null }: if var == null then "user has not provide us a `var` value" else var
+
+     nix-repl> fn {}
+     "user has not provide us with `var` value"
+
+     nix-repl> fn { var = 1; }
+     1
+     #+end_example
+
+**** paths
+
+     Path is a filesystem path representation which is a syntactic sugar and a separate type:
+
+     #+begin_example nix
+     nix-repl> builtins.isPath /foo
+     true
+
+     nix-repl> builtins.isPath "/foo"
+     false
+
+     nix-repl> builtins.typeOf /foo
+     "path"
+
+     nix-repl> /foo + /bar
+     /foo/bar
+
+     nix-repl> /foo + /bar + "/baz"
+     /foo/bar/baz
+     #+end_example
+
+**** uri
+
+     URI's are also supported which are syntactic sugar, but not a separate type:
+
+     #+begin_example nix
+     nix-repl> http://example.org/foo.tar.bz2
+     "http://example.org/foo.tar.bz2"
+
+     nix-repl> http://example.org/foo.tar.bz2?foo=bar
+     "http://example.org/foo.tar.bz2?foo=bar"
+
+     nix-repl> builtins.typeOf http://example.org/foo.tar.bz2
+     "string"
+     #+end_example
+
+**** attribute sets
+
+     This is crucial data type of the whole language.
+
+     Attribute sets are like hash-maps, but a bit more advanced.
+
+     #+begin_example nix
+     nix-repl> {}
+     { }
+
+     nix-repl> { a = 1; }
+     { a = 1; }
+     #+end_example
+
+     Attribute sets have a shortcut to define nested keys:
+
+     #+begin_quote
+     =:p= is a repl helper which prints value expanding expression recursively
+     #+end_quote
+
+     #+begin_example nix
+     nix-repl> { a.b.c = 1; }
+     { a = { ... }; }
+
+     nix-repl> :p { a.b.c = 1; }
+     { a = { b = { c = 1; }; }; }
+     #+end_example
+
+     Attribute sets could be recursive, to define a recursive attribute set prepend it with =rec= keyword:
+
+     #+begin_example nix
+     nix-repl> rec { a = 1; b = a; }
+     { a = 1; b = 1; }
+     #+end_example
+
+     Given this we could say that =let= is just an attribute set underneath.
+
+     Attribute sets could =inherit= keys of each other:
+
+     #+begin_example nix
+     nix-repl> baseSet = { a = 1; b = 2; }
+
+     nix-repl> { inherit (baseSet) a b; c = 3; }
+     { a = 1; b = 2; c = 3; }
+     #+end_example
+
+     We could also use =inherit= inside =let= (because it is just an attribute set).
+
+     To access individual keys of the attribute set dot notation is used (=.= is an operator called =select=):
+
+     #+begin_example nix
+     nix-repl> a = { foo = 1; bar = 2; }
+     nix-repl> a.foo
+     1
+     nix-repl> a.bar
+     2
+
+     nix-repl> x = { a.b = 1; }
+     nix-repl> x . a . b
+     1
+     #+end_example
+
+     Attribute set keys could be defined from variable or with a string:
+
+     #+begin_example nix
+     nix-repl> key = "keyName"
+     nix-repl> :p { foo.${key} = 1; }
+     { foo = { keyName = 1; }; }
+
+     nix-repl> :p { foo."${key}Interpolated" = 1; }
+     { foo = { keyNameInterpolated = 1; }; }
+     #+end_example
+
+     You could merge attribute sets with =//= operator, thus deep-merge is not providen by builtins (=nixpkgs= library has =lib.recursiveUpdate=):
+
+     #+begin_example nix
+     nix-repl> { a = 1; } // { a = 2; b = 3; }
+     { a = 2; b = 3; }
+
+     nix-repl> { a = 1; } // { a = 2; b = 3; } // { c = 4; }
+     { a = 2; b = 3; c = 4; }
+
+     nix-repl> :p { a = { b = 1; }; } // { a = { b = 2; }; }
+     { a = { b = 2; }; }
+     #+end_example
+
+     Also you could get values & names of the attribute sets (order is guaranteed):
+
+     #+begin_example nix
+     nix-repl> builtins.attrValues { a = 1; b = 2; }
+     [ 1 2 ]
+
+     nix-repl> builtins.attrNames { a = 1; b = 2; }
+     [ "a" "b" ]
+     #+end_example
+
+     Attribute sets could be used in combination with =with= operator to define lexical scopes from attribute sets:
+
+     #+begin_example nix
+     nix-repl> with { a = 1; b = 2; }; a + b
+     3
+     #+end_example
+
+**** lists
+
+     Basic lists:
+
+     #+begin_example nix
+     nix-repl> [1 2 3]
+     [ 1 2 3 ]
+
+     nix-repl> [1 2 (3 + 1)]
+     [ 1 2 4 ]
+     #+end_example
+
+     List concatenation:
+
+     #+begin_example nix
+     nix-repl> [1 2] ++ [3 4]
+     [ 1 2 3 4 ]
+     #+end_example
+
+     List elements:
+
+     #+begin_example nix
+     nix-repl> builtins.head [1 2 3]
+     1
+
+     nix-repl> builtins.tail [1 2 3]
+     [ 2 3 ]
+
+     nix-repl> builtins.elem 1 [0 1 2]
+     true
+
+     nix-repl> builtins.elem 1 [0 2]
+     false
+
+     nix-repl> builtins.elemAt [0 1] 1
+     1
+     #+end_example
+
+     Loops:
+
+     #+begin_example nix
+     nix-repl> map (item: item + 1) [1 2 3]
+     [ 2 3 4 ]
+     #+end_example
+
+     Defining =fold= (=reduce=) via recursion (this function available in =nixpkgs=):
+
+     #+begin_example nix
+     nix-repl> fold = op: nul: list:
+                        with builtins; let
+			  len = length list;
+			  loop = n: if n == len
+			            then nul
+				    else op (elemAt list n) (loop (n + 1));
+			in loop 0
+
+     nix-repl> fold (value: acc: value ++ acc) [] [[1 2][3 4]]
+     [ 1 2 3 4 ]
+     #+end_example
+
+**** control flow
+
+     We have seen =if=:
+
+     #+begin_example nix
+     nix-repl> if 1 == 1 then "equal" else "not equal"
+     "equal"
+     #+end_example
+
+     And thats all you have to control the execution :)
+
+**** errors
+
+     Throwing an error breaks the execution:
+
+     #+begin_example nix
+     nix-repl> throw "oops"
+     error: oops
+     #+end_example
+
+     There is a syntactic sugar which allows to check prerequisites in expressions, just prepend expression with =assert expr;=:
+
+     #+begin_example
+     nix-repl> assert true; "everything is ok"
+     "everything is ok"
+
+     nix-repl> assert false; "everything is ok"
+     error: assertion false failed at (string):1:1
+     #+end_example
+
+**** tracing
+
+     Simple tracing expression is available:
+
+     #+begin_example nix
+     nix-repl> builtins.trace "value" "expression"
+     trace: value
+     "expression"
+
+     nix-repl> map (value: builtins.trace value value) [1 2 3 4]
+     trace: 1
+     trace: 2
+     trace: 3
+     trace: 4
+     [ 1 2 3 4 ]
+     #+end_example
+
+**** laziness
+
+     Every expression is lazy:
+
+     #+begin_example nix
+     nix-repl> x = builtins.trace "i am lazy" "result"
+
+     nix-repl> x
+     trace: i am lazy
+     "result"
+     #+end_example
+
+** search for packages
+
+   Run REPL with =make run/nix/repl=, you will see:
+
+   #+begin_example
+   Welcome to Nix version 2.3.15. Type :? for help.
+
+   Loading '<nixpkgs>'...
+   Added 14696 variables.
+
+   nix-repl>
+   #+end_example
+
+   Packages are available inside =pkgs= namespace, write:
+
+   #+begin_example
+   nix-repl> pkgs.hello
+   #+end_example
+
+   Then press =TAB=, you will see:
+
+   #+begin_example
+   pkgs.hello          pkgs.hello-unfree   pkgs.hello-wayland
+   #+end_example
+
+   To see package description:
+
+   #+begin_example
+   nix-repl> pkgs.hello.meta.description
+   "A program that produces a familiar, friendly greeting"
+   #+end_example
+
+** build container
+
+   Nix package manager is able to build containers which conforms OCI format.
+
+   We have an example docker container with:
+
+   - bash
+   - curl
+   - CA certificates
+   - coreutils + some additional tools
+
+   To build this container:
+
+   - change your working directory to =./container= with =cd ./container=
+   - build a container with =make nix/build/container=
+
+   This will output =./build/container.tar.gz= symbolic link. This symbolic will point to the object inside =/nix/store/=.
+
+   To import this =.tar.gz= into docker you will need to copy this file from nix store somewhere where it will be accessible to docker:
+
+   #+begin_example
+   $ cp -L ./build/container.tar.gz ./container.tar.gz
+   #+end_example
+
+   Then open separate terminal tab and navigate to =./container= directory, after that:
+
+   #+begin_example
+   $ docker load -i container.tar.gz
+   #+end_example
+
+   Run container with:
+
+   #+begin_example
+   $ docker run -it gitlab.example.com:5050/nix/showcase/showcase:latest
+   #+end_example

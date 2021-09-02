@@ -1,4 +1,8 @@
 build
 .cache
 .local
+.config
+.personal.*
+/.tmux
+/.env
 container.tar.gz

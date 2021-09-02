@@ -35,7 +35,7 @@ in stdenv.mkDerivation rec {
     fi
 
     export LANG="en_US.UTF-8"
-    export NIX_PATH="nixpkgs=${nixpkgs}"
+    export NIX_PATH="nixpkgs=${nixpkgs}:$root"
 
     if [ ! -z "$PS1" ]
     then

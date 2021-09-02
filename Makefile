@@ -1,6 +1,6 @@
 .DEFAULT_GOAL := all
 
-root := $(dir $(realpath $(firstword $(MAKEFILE_LIST))))
+root := $(patsubst %/,%,$(dir $(realpath $(firstword $(MAKEFILE_LIST)))))
 
 ## parameters
 
@@ -13,7 +13,8 @@ container_namespace ?= $(remote):5050/$(group)/$(name)
 container_tag       ?= latest
 docker_user         ?=
 docker_password     ?=
-
+tmux                := tmux -2 -f $(root)/.tmux.conf -S $(root)/.tmux
+tmux_session        := $(name)
 
 shell_opts = -v nix:/nix:rw                     \
 	-v $(root):/chroot                      \
@@ -25,6 +26,12 @@ shell_opts = -v nix:/nix:rw                     \
 	-w /chroot                              \
 	--hostname localhost                    \
 	$(foreach v,$(ports), -p $(v):$(v) )
+
+## macro
+
+define fail
+{ echo "error: "$(1) 1>&2; exit 1; }
+endef
 
 ##
 
