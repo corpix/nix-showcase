@@ -50,6 +50,7 @@
 
    - https://nixos.org/manual/nix/stable/#ch-expression-language
    - https://nixos.wiki/wiki/Nix_Expression_Language
+   - https://ianthehenry.com/posts/how-to-learn-nix/introduction/
 
 *** repl
 
