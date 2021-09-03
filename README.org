@@ -54,11 +54,12 @@
     - variables
     - functions
     - booleans
+    - null
     - numbers
       - integers
       - floats
     - strings
-    - null
+    - regular expressions
     - paths
     - uri
     - attribute sets
@@ -66,6 +67,7 @@
     - control flow
     - errors
     - laziness
+    - derivations
 
 **** variables
 
@@ -138,6 +140,25 @@
      5
      #+end_example
 
+     Destructuring results could be accessed as an attribute set:
+
+     #+begin_example nix
+     nix-repl> fn = { a, b, c } @ attrs: attrs
+     nix-repl> fn { a = 1; b = 2; c = 3; }
+     { a = 1; b = 2; c = 3; }
+
+     nix-repl> fn = { a, b, c ? 3 } @ attrs: attrs
+     nix-repl> fn { a = 1; b = 2; }
+     { a = 1; b = 2; }
+
+     nix-repl> fn { a = 1; b = 2; c = 3; }
+     { a = 1; b = 2; c = 3; }
+
+     nix-repl> fn = { a, b, c, ... } @ attrs: attrs
+     nix-repl> fn { a = 1; b = 2; c = 3; d = 4; }
+     { a = 1; b = 2; c = 3; d = 4; }
+     #+end_example
+
 **** booleans
 
      For boolean true/false there are separate keywords:
@@ -183,6 +204,20 @@
       nix-repl> [ 1 2 3 ] == [ 1 2 ]
       false
       #+end_example
+
+**** null
+
+     Null is just =null=, like in other languages.
+
+     #+begin_example nix
+     nix-repl> fn = { var ? null }: if var == null then "user has not provide us a `var` value" else var
+
+     nix-repl> fn {}
+     "user has not provide us with `var` value"
+
+     nix-repl> fn { var = 1; }
+     1
+     #+end_example
 
 **** numbers
 
@@ -255,23 +290,31 @@
      ''
      #+end_example
 
-**** null
+**** regular expressions
 
-     Null is just =null=, like in other languages.
+     There is no separate type for regular expressions, they are represented with usual strings and applied with =builtins.match=:
+
+     #+begin_quote
+     =match= is using [[http://pubs.opengroup.org/onlinepubs/9699919799/basedefs/V1_chap09.html#tag_09_04][extended POSIX regular expressions]]
+     #+end_quote
 
      #+begin_example nix
-     nix-repl> fn = { var ? null }: if var == null then "user has not provide us a `var` value" else var
+     nix-repl> builtins.match "http" "http://ya.ru/hello"
+     null
 
-     nix-repl> fn {}
-     "user has not provide us with `var` value"
+     nix-repl> builtins.match ".+" "http://ya.ru/hello"
+     [ ]
 
-     nix-repl> fn { var = 1; }
-     1
+     nix-repl> builtins.match "(.+)" "http://ya.ru/hello"
+     [ "http://ya.ru/hello" ]
+
+     nix-repl> builtins.match "http://([^/]+).*" "http://ya.ru/hello"
+     [ "ya.ru" ]
      #+end_example
 
 **** paths
 
-     Path is a filesystem path representation which is a syntactic sugar and a separate type:
+     Path is a filesystem object representing files and directories which is a separate type:
 
      #+begin_example nix
      nix-repl> builtins.isPath /foo
@@ -288,6 +331,33 @@
 
      nix-repl> /foo + /bar + "/baz"
      /foo/bar/baz
+     #+end_example
+
+     #+begin_example nix
+     nix-repl> builtins.readDir ./.
+     {
+       ".cache"               =  "directory";
+       ".config"              =  "directory";
+       ".fish.conf"           =  "regular";
+       ".git"                 =  "directory";
+       ".gitignore"           =  "regular";
+       ".local"               =  "directory";
+       ".personal.fish.conf"  =  "regular";
+       ".personal.tmux.conf"  =  "regular";
+       ".tmux"                =  "unknown";
+       ".tmux.conf"           =  "regular";
+       Makefile               =  "regular";
+       "README.org"           =  "regular";
+       container              =  "directory";
+       dotfiles               =  "directory";
+       "nix-cage.json"        =  "regular";
+       "nixpkgs.nix"          =  "regular";
+       "shell.nix"            =  "regular";
+       "tools.nix"            =  "regular";
+     }
+
+     nix-repl> builtins.readDir "./."
+     error: string './.' doesn't represent an absolute path, at (string):1:1
      #+end_example
 
 **** uri
@@ -446,14 +516,14 @@
      1
      #+end_example
 
-     Loops:
+**** loops
 
      #+begin_example nix
      nix-repl> map (item: item + 1) [1 2 3]
      [ 2 3 4 ]
      #+end_example
 
-     Defining =fold= (=reduce=) via recursion (this function available in =nixpkgs=):
+     Defining =fold= (=reduce=) via recursion (this function is available in =nixpkgs=):
 
      #+begin_example nix
      nix-repl> fold = op: nul: list:
@@ -466,6 +536,13 @@
 
      nix-repl> fold (value: acc: value ++ acc) [] [[1 2][3 4]]
      [ 1 2 3 4 ]
+     #+end_example
+
+     For attribute sets there is =builtins.mapAttrs=:
+
+     #+begin_example nix
+     nix-repl> :p builtins.mapAttrs (name: value: [name value]) { a = 1; b = 2; }
+     { a = [ "a" 1 ]; b = [ "b" 2 ]; }
      #+end_example
 
 **** control flow
@@ -525,6 +602,48 @@
      nix-repl> x
      trace: i am lazy
      "result"
+     #+end_example
+
+**** derivations
+
+     Derivations is a fancy name for term «package».
+
+     #+begin_quote
+     Well... not quite, but it could be comfortable to think about derivation as a package
+     #+end_quote
+
+     We will discuss a low-level derivations which usualy not used directly (=nixpkgs= provides high-level tools to build packages).
+
+     Here is an example:
+
+     #+begin_quote
+     We will use some packages from =nixpkgs= here to keep things simple.
+     You should restart =nix repl= with =<nixpkgs>= argument, exit the repl and type: =nix repl '<nixpkgs>'=
+     #+end_quote
+
+     #+begin_example nix
+     nix-repl> :b derivation {
+                    name = "foo";
+		    system = "x86_64-linux";
+		    builder = pkgs.writeScript "builder.sh" ''
+		      #!${pkgs.bash}/bin/bash -e
+		      ${coreutils}/bin/mkdir $out
+		      ${coreutils}/bin/touch $out/hello
+		    '';
+		  }
+     [2 built, 0.0 MiB DL]
+
+     this derivation produced the following outputs:
+       out -> /nix/store/ah2zr4q1s8kvzd134qvkk074nmghj307-foo
+     #+end_example
+
+     This provides one output named =out=, outputs are atomic parts of the package.
+
+     Let's inspect the filesystem:
+
+     #+begin_example
+     $ ls -la /nix/store/ah2zr4q1s8kvzd134qvkk074nmghj307-foo
+     .r--r--r-- 0 nobody  1 Jan  1970 hello
      #+end_example
 
 ** search for packages
