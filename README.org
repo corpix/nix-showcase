@@ -4,10 +4,13 @@
 
   I use it to present this wonderful piece of technology to other people.
 
+
   #+begin_quote
   Here is a QR code with the address of this repository
   https://github.com/corpix/nix-showcase
+  #+end_quote
 
+  #+begin_src
   ███████████████████████████████
   █ ▄▄▄▄▄ ██▄▄ ▀ ██▀▄▀███ ▄▄▄▄▄ █
   █ █   █ █▀▄  █▀▄▄▀▀▄▄██ █   █ █
@@ -24,7 +27,7 @@
   █ █   █ ██▄▀▄▄▄█ ▀▀█   ▄▄▄ ▀█ █
   █ █▄▄▄█ █▀ ▀ ▄██▄▄█ ▄▄▄  ▄  ▄▀█
   █▄▄▄▄▄▄▄█▄▄▄▄█████▄▄▄██▄▄▄█▄███
-  #+end_quote
+  #+end_src
 
 ** preparations
 
