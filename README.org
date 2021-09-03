@@ -4,6 +4,28 @@
 
   I use it to present this wonderful piece of technology to other people.
 
+  #+begin_quote
+  Here is a QR code with the address of this repository
+  https://github.com/corpix/nix-showcase
+
+  ███████████████████████████████
+  █ ▄▄▄▄▄ ██▄▄ ▀ ██▀▄▀███ ▄▄▄▄▄ █
+  █ █   █ █▀▄  █▀▄▄▀▀▄▄██ █   █ █
+  █ █▄▄▄█ █▄▀ █▄█▀█ ▄ ▄ █ █▄▄▄█ █
+  █▄▄▄▄▄▄▄█▄▀▄█ █ ▀▄█▄▀ █▄▄▄▄▄▄▄█
+  █▄ ▀▀█▄▄▄▀▄ █▄▀▀ █ █ █▀█▀ ▄▀▀██
+  █▄ ▀   ▄▀█▄▀ ▄▄█  █ ▀▄▀██▄▀████
+  █▄██ ▀█▄  ▄ █▀ ▄ ▀▀   █  ▀██▀ █
+  █▀ █▄█ ▄▄▄▄██▀   ▄▄█▀▄▄█▀ ▄ █▀█
+  █▀▄█ ▀ ▄█▀▄▄█▄█▄▀▀ ▀ █▄▀ ▀▄ ▀▀█
+  █ ▄▀█▀ ▄ ▀▄▄▀▄▄ ▄▄█▀▄▀█▀█▄▄██▄█
+  █▄█▄▄▄█▄▄▀█▀▄▀▀█▀█ ▀▄ ▄▄▄ ▀▄▄▄█
+  █ ▄▄▄▄▄ █ ███▀ ▄ ▄█▄  █▄█ ▄▄▀▀█
+  █ █   █ ██▄▀▄▄▄█ ▀▀█   ▄▄▄ ▀█ █
+  █ █▄▄▄█ █▀ ▀ ▄██▄▄█ ▄▄▄  ▄  ▄▀█
+  █▄▄▄▄▄▄▄█▄▄▄▄█████▄▄▄██▄▄▄█▄███
+  #+end_quote
+
 ** preparations
 
    For all commands inside this repository you will need a Nix package manager or
